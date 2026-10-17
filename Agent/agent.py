@@ -26,6 +26,7 @@ agent = requests.post(
     },
     tools=TOOL_DEFINITIONS,
 )
+print("do you make it here?")
 
 agent.raise_for_status()
 assistant = agent.json()
