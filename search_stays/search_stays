@@ -1,0 +1,159 @@
+# search_hotel.py
+# Finds the cheapest places to stay that have a phone number.
+# Main function for teammates: search_stays(city, start_date, end_date, bedrooms=None)
+
+
+import os
+import re
+import requests
+from dotenv import load_dotenv
+
+
+load_dotenv()                                  # read secrets from .env
+API_KEY = os.getenv("SERPAPI_API_KEY")         # your SerpApi key
+URL = "https://serpapi.com/search.json"        # SerpApi's address
+
+
+
+
+def _search(location, check_in, check_out, rentals=False, bedrooms=None):
+   """Ask SerpApi for places. Hotels by default, rentals if rentals=True. 1 search."""
+   params = {
+       "engine": "google_hotels",
+       "q": location,
+       "check_in_date": check_in,
+       "check_out_date": check_out,
+       "currency": "USD",
+       "api_key": API_KEY,
+   }
+   if rentals:
+       params["vacation_rentals"] = "true"
+       if bedrooms:
+           params["bedrooms"] = bedrooms      # minimum bedrooms (rentals only)
+   r = requests.get(URL, params=params, timeout=30)
+   if r.status_code != 200:
+       print("SerpApi says:", r.text)
+   r.raise_for_status()
+   return r.json().get("properties", [])
+
+
+
+
+def _bedrooms(p):
+   """Find the bedroom number in text like '2 bedrooms'. None if not found."""
+   for item in p.get("essential_info", []):
+       m = re.search(r"(\d+)\s+bedroom", item)
+       if m:
+           return int(m.group(1))
+   return None
+
+
+
+
+def _clean(p, check_in, check_out):
+   """Keep only the fields we care about from one place."""
+   return {
+       "name": p.get("name"),
+       "type": p.get("type"),
+       "price_per_night": p.get("rate_per_night", {}).get("extracted_lowest"),
+       "total_price": p.get("total_rate", {}).get("extracted_lowest"),
+       "bedrooms": _bedrooms(p),
+       "check_in": check_in,
+       "check_out": check_out,
+       "property_token": p.get("property_token"),
+   }
+
+
+
+
+def search_all(location, check_in, check_out, bedrooms=None):
+   """Hotels + rentals in one list, no duplicates. 2 searches."""
+   hotels = _search(location, check_in, check_out)
+   rentals = _search(location, check_in, check_out, rentals=True, bedrooms=bedrooms)
+   results, seen = [], set()
+   for p in hotels + rentals:
+       r = _clean(p, check_in, check_out)
+       if r["property_token"] in seen:
+           continue
+       seen.add(r["property_token"])
+       results.append(r)
+   return results
+
+
+
+
+def get_contact(property_token, check_in, check_out, location):
+   """Phone + address for ONE place. 1 search."""
+   params = {
+       "engine": "google_hotels",
+       "q": location,                         # SerpApi needs the search phrase too
+       "property_token": property_token,
+       "check_in_date": check_in,
+       "check_out_date": check_out,
+       "currency": "USD",
+       "api_key": API_KEY,
+   }
+   r = requests.get(URL, params=params, timeout=30)
+   if r.status_code != 200:
+       print("SerpApi says:", r.text)
+   r.raise_for_status()
+   d = r.json()
+   return {"phone": d.get("phone"), "address": d.get("address")}
+
+
+
+
+def search_stays(city, start_date, end_date, bedrooms=None, how_many=2, max_lookups=6):
+   """MAIN FUNCTION.
+   Returns the `how_many` cheapest places that HAVE a phone number:
+   [{name, type, price_per_night, total_price, phone, address}, ...]
+   Usually ~3 SerpApi searches per call."""
+
+
+   # 1. Search (hotels only unless bedrooms is given)
+   if bedrooms:
+       results = search_all(city, start_date, end_date, bedrooms)
+   else:
+       results = [_clean(p, start_date, end_date)
+                  for p in _search(city, start_date, end_date)]
+
+
+   # 2. Filter: needs a price + token; rentals must meet bedrooms
+   candidates = [
+       r for r in results
+       if r["total_price"] is not None
+       and r["property_token"]
+       and (not bedrooms or r["bedrooms"] is None or r["bedrooms"] >= bedrooms)
+   ]
+
+
+   # 3. Sort: cheapest total price first
+   candidates.sort(key=lambda r: r["total_price"])
+
+
+   # 4. Look up phones cheapest-first, stop once we have enough
+   found, lookups = [], 0
+   for r in candidates:
+       if len(found) == how_many or lookups == max_lookups:
+           break
+       try:
+           contact = get_contact(r["property_token"], start_date, end_date, city)
+       except Exception:
+           continue
+       finally:
+           lookups += 1
+       if contact["phone"]:
+           found.append({
+               "name": r["name"],
+               "type": r["type"],
+               "price_per_night": r["price_per_night"],
+               "total_price": r["total_price"],
+               "phone": contact["phone"],
+               "address": contact["address"],
+           })
+   return found
+
+
+
+
+# ---- Test: only runs when you run THIS file directly ----
