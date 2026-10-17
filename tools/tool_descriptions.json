@@ -28,24 +28,6 @@
   {
     "type": "function",
     "function": {
-      "name": "get_building_contact",
-      "description": "Look up the phone number and physical address for an accommodation using its building ID.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "building_id": {
-            "type": "string",
-            "description": "Unique building or accommodation ID."
-          }
-        },
-        "required": ["building_id"],
-        "additionalProperties": false
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "call_accommodation",
       "description": "Initiate an outbound call through ElevenLabs Conversational AI to request a quote for an accommodation. Handle call completion and retrieve the transcript when available.",
       "parameters": {
