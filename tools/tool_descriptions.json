@@ -1,0 +1,152 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_stays",
+      "description": "Search the internet for accommodation options in a city available between the requested dates. Return up to 50 candidates with building IDs, listing prices, and sources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "City and country to search."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Check-in date in YYYY-MM-DD format."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Check-out date in YYYY-MM-DD format."
+          }
+        },
+        "required": ["city", "start_date", "end_date"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_building_contact",
+      "description": "Look up the phone number and physical address for an accommodation using its building ID.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique building or accommodation ID."
+          }
+        },
+        "required": ["building_id"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "call_accommodation",
+      "description": "Initiate an outbound call through ElevenLabs Conversational AI to request a quote for an accommodation. Handle call completion and retrieve the transcript when available.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "description": "Unique ID of the accommodation being contacted."
+          },
+          "company_name": {
+            "type": "string",
+            "description": "Name of the accommodation."
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Verified phone number in international format."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Check-in date in YYYY-MM-DD format."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Check-out date in YYYY-MM-DD format."
+          },
+          "guest_count": {
+            "type": "integer",
+            "description": "Number of guests."
+          }
+        },
+        "required": [
+          "building_id",
+          "company_name",
+          "phone_number",
+          "start_date",
+          "end_date",
+          "guest_count"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "extract_lowest_quote",
+      "description": "Compare accommodation call transcripts and identify the lowest valid, comparable total price for the requested stay. Return the company name, quoted price, currency, and supporting transcript evidence.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "transcripts": {
+            "type": "array",
+            "description": "Call transcripts and associated accommodation details.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "building_id": {
+                  "type": "string",
+                  "description": "Unique accommodation ID."
+                },
+                "company_name": {
+                  "type": "string",
+                  "description": "Name of the company that was called."
+                },
+                "call_id": {
+                  "type": "string",
+                  "description": "ElevenLabs call ID, if available."
+                },
+                "transcript": {
+                  "type": "string",
+                  "description": "Full transcript of the call."
+                },
+                "call_status": {
+                  "type": "string",
+                  "description": "Call status, such as completed, failed, or no_answer."
+                }
+              },
+              "required": [
+                "building_id",
+                "company_name",
+                "transcript"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Check-in date in YYYY-MM-DD format."
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Check-out date in YYYY-MM-DD format."
+          }
+        },
+        "required": [
+          "transcripts",
+          "start_date",
+          "end_date"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+]
