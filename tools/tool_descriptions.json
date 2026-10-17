@@ -97,10 +97,6 @@
                   "type": "string",
                   "description": "Name of the company that was called."
                 },
-                "call_id": {
-                  "type": "string",
-                  "description": "ElevenLabs call ID, if available."
-                },
                 "transcript": {
                   "type": "string",
                   "description": "Full transcript of the call."

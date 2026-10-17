@@ -4,14 +4,19 @@ import time
 import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
+import random
 
 import requests
 
 
 # Leave empty for now; populate through an environment variable later.
-ELEVENLABS_API_KEY = ""
-ELEVENLABS_AGENT_ID = ""
-ELEVENLABS_PHONE_NUMBER_ID = ""
+ELEVENLABS_API_KEY = "sk_efe218a91ffa4990c7e42e113d7c0add141256cbb75b7aaa"
+ELEVENLABS_AGENT_ID = "agent_5201m55bhckqf8w92en2z6r7gvrt"
+ELEVENLABS_PHONE_NUMBER_ID = "phnum_0001m55jxj5rejnthj88qvkyp386"
+
+
+
+
 
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
 SERP_API_KEY = "47dae7cda7fda633a20d50337cd0b14a4597d46d74af13c7daddede295ca8cdb"
@@ -38,8 +43,8 @@ def call_accommodation(
     end_date: str,
     guest_count: int,
     timeout_seconds: int = 180,
-    poll_interval_seconds: int = 5,
-) -> dict[str, Any]:
+    poll_interval_seconds: int = 5
+):
     """
     Call an accommodation and return its transcript.
 
@@ -74,6 +79,7 @@ def call_accommodation(
         "to_number": phone_number,
         "conversation_initiation_client_data": {
             "dynamic_variables": {
+                "call_id": random.randint(10000, 99999),
                 "company_name": company_name,
                 "building_id": building_id,
                 "start_date": start_date,
@@ -133,7 +139,6 @@ def call_accommodation(
                 return {
                     "building_id": building_id,
                     "company_name": company_name,
-                    "call_id": conversation_id,
                     "call_status": "completed",
                     "transcript": transcript_text,
                 }
@@ -142,7 +147,6 @@ def call_accommodation(
                 return {
                     "building_id": building_id,
                     "company_name": company_name,
-                    "call_id": conversation_id,
                     "call_status": "failed",
                     "error": "ElevenLabs reported that the call failed.",
                     "transcript": None,
@@ -511,9 +515,9 @@ def send_quote_email(
         A dictionary indicating whether the email was sent.
     """
 
-    recipient = os.environ["QUOTE_EMAIL_RECIPIENT"]
-    sender = os.environ["SMTP_EMAIL"]
-    smtp_password = os.environ["SMTP_PASSWORD"]
+    recipient = "kevinsbryce@gmail.com"
+    sender = "kevinsbryce@gmail.com"
+    smtp_password = "kdrh tgjw eqyn uaep"
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("SMTP_PORT", "465"))
     currency = os.getenv("QUOTE_CURRENCY", "CAD")
