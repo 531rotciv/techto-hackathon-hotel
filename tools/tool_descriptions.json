@@ -1,3 +1,4 @@
+
 [
   {
     "type": "function",
@@ -20,7 +21,11 @@
             "description": "Check-out date in YYYY-MM-DD format."
           }
         },
-        "required": ["city", "start_date", "end_date"],
+        "required": [
+          "city",
+          "start_date",
+          "end_date"
+        ],
         "additionalProperties": false
       }
     }
@@ -126,6 +131,45 @@
           "transcripts",
           "start_date",
           "end_date"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "send_quote_email",
+      "description": "Generate and send an email to the configured recipient summarizing the cheapest accommodation quote. Include the quoted price, organization name, organization address, call transcript link, and reservation number.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "description": "Total quoted price for the entire stay, not the nightly rate."
+          },
+          "organization_name": {
+            "type": "string",
+            "description": "Name of the organization that provided the lowest accommodation quote."
+          },
+          "organization_address": {
+            "type": "string",
+            "description": "Physical address of the organization or accommodation."
+          },
+          "call_transcript_link": {
+            "type": "string",
+            "description": "URL linking to the call transcript that contains the quoted price."
+          },
+          "reservation_number": {
+            "type": "string",
+            "description": "Reservation or booking reference number provided by the organization, if available."
+          }
+        },
+        "required": [
+          "price",
+          "organization_name",
+          "organization_address",
+          "call_transcript_link"
         ],
         "additionalProperties": false
       }

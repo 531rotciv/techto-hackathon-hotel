@@ -14,6 +14,8 @@ ELEVENLABS_AGENT_ID = ""
 ELEVENLABS_PHONE_NUMBER_ID = ""
 
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
+SERP_API_KEY = "47dae7cda7fda633a20d50337cd0b14a4597d46d74af13c7daddede295ca8cdb"
+SERP_URL = "https://serpapi.com/search.json" 
 
 
 def _elevenlabs_headers() -> dict[str, str]:
@@ -341,3 +343,245 @@ def extract_lowest_quote(
         "quotes_considered": len(candidates),
         "rejected_calls": rejected,
     }
+
+
+
+
+def _search(location, check_in, check_out, rentals=False, bedrooms=None):
+   """Ask SerpApi for places. Hotels by default, rentals if rentals=True. 1 search."""
+   params = {
+       "engine": "google_hotels",
+       "q": location,
+       "check_in_date": check_in,
+       "check_out_date": check_out,
+       "currency": "USD",
+       "api_key": SERP_API_KEY,
+   }
+   if rentals:
+       params["vacation_rentals"] = "true"
+       if bedrooms:
+           params["bedrooms"] = bedrooms      # minimum bedrooms (rentals only)
+   r = requests.get(SERP_URL, params=params, timeout=30)
+   if r.status_code != 200:
+       print("SerpApi says:", r.text)
+   r.raise_for_status()
+   return r.json().get("properties", [])
+
+
+
+
+def _bedrooms(p):
+   """Find the bedroom number in text like '2 bedrooms'. None if not found."""
+   for item in p.get("essential_info", []):
+       m = re.search(r"(\d+)\s+bedroom", item)
+       if m:
+           return int(m.group(1))
+   return None
+
+
+
+
+def _clean(p, check_in, check_out):
+   """Keep only the fields we care about from one place."""
+   return {
+       "name": p.get("name"),
+       "type": p.get("type"),
+       "price_per_night": p.get("rate_per_night", {}).get("extracted_lowest"),
+       "total_price": p.get("total_rate", {}).get("extracted_lowest"),
+       "bedrooms": _bedrooms(p),
+       "check_in": check_in,
+       "check_out": check_out,
+       "property_token": p.get("property_token"),
+   }
+
+
+
+
+def search_all(location, check_in, check_out, bedrooms=None):
+   """Hotels + rentals in one list, no duplicates. 2 searches."""
+   hotels = _search(location, check_in, check_out)
+   rentals = _search(location, check_in, check_out, rentals=True, bedrooms=bedrooms)
+   results, seen = [], set()
+   for p in hotels + rentals:
+       r = _clean(p, check_in, check_out)
+       if r["property_token"] in seen:
+           continue
+       seen.add(r["property_token"])
+       results.append(r)
+   return results
+
+
+
+
+def get_contact(property_token, check_in, check_out, location):
+   """Phone + address for ONE place. 1 search."""
+   params = {
+       "engine": "google_hotels",
+       "q": location,                         # SerpApi needs the search phrase too
+       "property_token": property_token,
+       "check_in_date": check_in,
+       "check_out_date": check_out,
+       "currency": "USD",
+       "api_key": SERP_API_KEY,
+   }
+   r = requests.get(SERP_URL, params=params, timeout=30)
+   if r.status_code != 200:
+       print("SerpApi says:", r.text)
+   r.raise_for_status()
+   d = r.json()
+   return {"phone": d.get("phone"), "address": d.get("address")}
+
+
+
+
+def search_stays(city, start_date, end_date, bedrooms=None, how_many=2, max_lookups=6):
+   """MAIN FUNCTION.
+   Returns the `how_many` cheapest places that HAVE a phone number:
+   [{name, type, price_per_night, total_price, phone, address}, ...]
+   Usually ~3 SerpApi searches per call."""
+
+
+   # 1. Search (hotels only unless bedrooms is given)
+   if bedrooms:
+       results = search_all(city, start_date, end_date, bedrooms)
+   else:
+       results = [_clean(p, start_date, end_date)
+                  for p in _search(city, start_date, end_date)]
+
+
+   # 2. Filter: needs a price + token; rentals must meet bedrooms
+   candidates = [
+       r for r in results
+       if r["total_price"] is not None
+       and r["property_token"]
+       and (not bedrooms or r["bedrooms"] is None or r["bedrooms"] >= bedrooms)
+   ]
+
+
+   # 3. Sort: cheapest total price first
+   candidates.sort(key=lambda r: r["total_price"])
+
+
+   # 4. Look up phones cheapest-first, stop once we have enough
+   found, lookups = [], 0
+   for r in candidates:
+       if len(found) == how_many or lookups == max_lookups:
+           break
+       try:
+           contact = get_contact(r["property_token"], start_date, end_date, city)
+       except Exception:
+           continue
+       finally:
+           lookups += 1
+       if contact["phone"]:
+           found.append({
+               "name": r["name"],
+               "type": r["type"],
+               "price_per_night": r["price_per_night"],
+               "total_price": r["total_price"],
+               "phone": contact["phone"],
+               "address": contact["address"],
+           })
+   return found
+
+
+
+   
+import os
+import smtplib
+from decimal import Decimal, InvalidOperation
+from email.message import EmailMessage
+
+
+def send_quote_email(
+    price: float,
+    organization_name: str,
+    organization_address: str,
+    call_transcript_link: str,
+    reservation_number: str|None = None
+) -> dict:
+    """
+    Generate and send an email summarizing the cheapest accommodation quote.
+
+    Args:
+        price: Total quoted price for the stay.
+        organization_name: Organization that provided the quote.
+
+    Returns:
+        A dictionary indicating whether the email was sent.
+    """
+
+    recipient = os.environ["QUOTE_EMAIL_RECIPIENT"]
+    sender = os.environ["SMTP_EMAIL"]
+    smtp_password = os.environ["SMTP_PASSWORD"]
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "465"))
+    currency = os.getenv("QUOTE_CURRENCY", "CAD")
+
+    if not organization_name.strip():
+        raise ValueError("Organization name cannot be empty.")
+
+    try:
+        quote = Decimal(str(price))
+    except InvalidOperation as exc:
+        raise ValueError("Price must be a valid number.") from exc
+
+    if not quote.is_finite() or quote < 0:
+        raise ValueError("Price must be a finite, non-negative number.")
+
+    formatted_price = f"{currency} {quote:,.2f}"
+
+    # Generate the email.
+    message = EmailMessage()
+    message["Subject"] = (
+        f"Cheapest Accommodation Quote: {organization_name}"
+    )
+    message["From"] = sender
+    message["To"] = recipient
+
+    message.set_content(
+        f"""Hello,
+
+Team 13 compared accommodation options and identified the following quote
+as the lowest qualifying price.
+
+Organization: {organization_name}
+Total quoted price: {formatted_price}
+Hotel address: {address}
+Link to call transcript: {call_link}
+Reservation number: {reservation_number}
+
+Please note that this price should be confirmed with the organization
+before making a booking.
+
+Best regards,
+Travel Agent
+"""
+    )
+
+    # Send the email using SMTP over SSL.
+    try:
+        with smtplib.SMTP_SSL(
+            smtp_host,
+            smtp_port,
+            timeout=30,
+        ) as server:
+            server.login(sender, smtp_password)
+            server.send_message(message)
+
+        return {
+            "success": True,
+            "recipient": recipient,
+            "organization_name": organization_name,
+            "price": str(quote),
+            "currency": currency,
+            "message": "Quote email sent successfully.",
+        }
+
+    except (smtplib.SMTPException, OSError) as exc:
+        return {
+            "success": False,
+            "recipient": recipient,
+            "organization_name": organization_name,
+            "error": str(exc),
+        }

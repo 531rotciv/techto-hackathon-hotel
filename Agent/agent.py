@@ -48,7 +48,7 @@ query_response = requests.post(
     headers=HEADERS,
     json={
         "assistant_id": assistant_id,
-        "content": "Find the cheapest places to stay in Toronto.",
+        "content": "Find the cheapest places to stay in Toronto from 12/12/2026 to 12/15/2026.",
     },
 )
 result = query_response.json()
