@@ -1,0 +1,10 @@
+{
+  "type": "call_initiation_failure",
+  "event_timestamp": 1792252800,
+  "data": {
+    "agent_id": "agent_fixture",
+    "conversation_id": "conv_fixture_busy",
+    "failure_reason": "busy",
+    "metadata": { "type": "twilio", "body": { "CallSid": "CAfixture", "CallStatus": "busy" } }
+  }
+}

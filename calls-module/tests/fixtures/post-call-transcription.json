@@ -1,0 +1,37 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1792252800,
+  "data": {
+    "agent_id": "agent_fixture",
+    "conversation_id": "conv_fixture_transcription",
+    "status": "done",
+    "transcript": [
+      { "role": "user", "message": "Good afternoon, Maple Suites.", "tool_calls": null, "tool_results": null, "time_in_call_secs": 1 },
+      { "role": "agent", "message": "Hi, what's the total for two guests, November fifth to seventh, including taxes and fees?", "tool_calls": null, "tool_results": null, "time_in_call_secs": 3 },
+      { "role": "user", "message": "That would be $154 for both nights, taxes included.", "tool_calls": null, "tool_results": null, "time_in_call_secs": 9 },
+      { "role": "agent", "message": null, "tool_calls": [{ "tool_name": "report_quote" }], "tool_results": null, "time_in_call_secs": 10 },
+      { "role": "agent", "message": "Is there a cheaper non-refundable rate?", "tool_calls": null, "tool_results": null, "time_in_call_secs": 11 },
+      { "role": "user", "message": "Non-refundable is $139 total.", "tool_calls": null, "tool_results": null, "time_in_call_secs": 15 },
+      { "role": "agent", "message": "So that's $139 total for the whole stay, including taxes and fees?", "tool_calls": null, "tool_results": null, "time_in_call_secs": 17 },
+      { "role": "user", "message": "Yes, $139 total, non-refundable.", "tool_calls": null, "tool_results": null, "time_in_call_secs": 20 },
+      { "role": "agent", "message": "Thank you so much, that's really helpful. We'll call back if we decide to book. Have a great day.", "tool_calls": null, "tool_results": null, "time_in_call_secs": 22 }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1792252760,
+      "call_duration_secs": 26,
+      "termination_reason": "end_call tool was called."
+    },
+    "analysis": {
+      "evaluation_criteria_results": {},
+      "data_collection_results": {
+        "lowest_total_price": { "data_collection_id": "lowest_total_price", "value": 139, "rationale": "The hotel confirmed $139 total, non-refundable." },
+        "includes_taxes": { "data_collection_id": "includes_taxes", "value": true, "rationale": "The hotel said taxes are included." },
+        "rate_conditions": { "data_collection_id": "rate_conditions", "value": "non-refundable", "rationale": "The $139 rate is non-refundable." },
+        "price_quote": { "data_collection_id": "price_quote", "value": "Yes, $139 total, non-refundable.", "rationale": "The hotel's confirmation." }
+      },
+      "call_successful": "success",
+      "transcript_summary": "Maple Suites quoted $154, then $139 non-refundable, taxes included."
+    },
+    "conversation_initiation_client_data": { "dynamic_variables": {} }
+  }
+}
