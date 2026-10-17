@@ -1,4 +1,3 @@
-
 [
   {
     "type": "function",
@@ -166,6 +165,30 @@
           "organization_name",
           "organization_address",
           "call_transcript_link"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "download_lowest_price_conversation",
+      "description": "Download the audio recording for the ElevenLabs conversation associated with the lowest-price accommodation quote. Save the audio locally and return the file path.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "description": "The ElevenLabs conversation ID associated with the lowest-price accommodation quote."
+          },
+          "output_dir": {
+            "type": "string",
+            "description": "Directory where the audio recording should be saved. Defaults to recordings."
+          }
+        },
+        "required": [
+          "conversation_id"
         ],
         "additionalProperties": false
       }

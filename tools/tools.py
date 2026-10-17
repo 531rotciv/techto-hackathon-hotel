@@ -42,7 +42,7 @@ def call_accommodation(
     start_date: str,
     end_date: str,
     guest_count: int,
-    timeout_seconds: int = 180,
+    timeout_seconds: int = 360,
     poll_interval_seconds: int = 5
 ):
     """
@@ -138,6 +138,7 @@ def call_accommodation(
 
                 return {
                     "building_id": building_id,
+                    "call_id": conversation_id,
                     "company_name": company_name,
                     "call_status": "completed",
                     "transcript": transcript_text,
@@ -515,7 +516,7 @@ def send_quote_email(
         A dictionary indicating whether the email was sent.
     """
 
-    recipient = "kevinsbryce@gmail.com"
+    recipient = "hackathon@techto.org"
     sender = "kevinsbryce@gmail.com"
     smtp_password = "kdrh tgjw eqyn uaep"
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -556,8 +557,13 @@ Link to call transcript: {call_link}
 Reservation number: {reservation_number}
 
 Please note that this price should be confirmed with the organization
-before making a booking.
-
+before making a booking..
+Our team emails are :
+kevinsbryce@gmail.com
+andy.valencia@cadillacfairview.com
+abasw2212@gmail.com
+ashanti.jiwonchoi@gmail.com
+issakhani.maryam@gmail.com
 Best regards,
 Travel Agent
 """
@@ -587,5 +593,66 @@ Travel Agent
             "success": False,
             "recipient": recipient,
             "organization_name": organization_name,
+            "error": str(exc),
+        }
+
+from pathlib import Path
+
+def download_lowest_price_conversation(
+    conversation_id: str,
+    output_dir: str = "recordings",
+) -> dict:
+    """
+    Download the audio recording for the conversation that provided
+    the lowest accommodation quote.
+
+    Returns a dictionary containing the conversation ID, status,
+    and local audio file path.
+    """
+    if not conversation_id:
+        return {
+            "success": False,
+            "error": "conversation_id is required.",
+        }
+
+    headers = _elevenlabs_headers()
+    url = (
+        "https://api.elevenlabs.io/v1/convai/conversations/"
+        f"{conversation_id}/audio"
+    )
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    file_path = output_path / f"conversation_{conversation_id}.mp3"
+
+    try:
+        with requests.get(
+            url,
+            headers=headers,
+            stream=True,
+            timeout=60,
+        ) as response:
+            response.raise_for_status()
+
+            with open(file_path, "wb") as audio_file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        audio_file.write(chunk)
+
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "audio_file": str(file_path.resolve()),
+        }
+
+    except requests.RequestException as exc:
+        # Remove a potentially incomplete recording.
+        if file_path.exists():
+            file_path.unlink()
+
+        return {
+            "success": False,
+            "conversation_id": conversation_id,
             "error": str(exc),
         }

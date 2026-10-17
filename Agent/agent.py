@@ -8,10 +8,11 @@ BASE_URL = "https://app.backboard.io/api"
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 TRAVEL_AGENT_SYSTEM_PROMPT = """
-You are an Travel agent   trying to find the cheapest stays in a city that the user provides.
+You are a Travel agent trying to find the cheapest stays in a city that the user provides.
 Your task is to  search the internet using provided apis to find the 50 least expensive places to stay
 in the city that the user asks you about. Once you have identified candidates, you will use 11labs API to 
-call the top 10 candidates and inquire about booking a stay with them.  
+call the top 10 candidates and inquire about booking a stay with them.   Continue to call comapnies until you have
+successfully confirmed a price.
 
 You will take the transcripts of the calls provided by the 11labs api and identify the lowest quoted price
 along with which company provided that quote. You will then generate an email summarizing the results of the 
@@ -48,7 +49,7 @@ query_response = requests.post(
     headers=HEADERS,
     json={
         "assistant_id": assistant_id,
-        "content": "Find the cheapest places to stay in Toronto from 12/12/2026 to 12/15/2026.",
+        "content": "Find the cheapest hotel in Calgalary, Alberta on November 13th for 2 nights."
     },
 )
 result = query_response.json()
