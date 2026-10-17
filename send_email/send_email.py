@@ -11,7 +11,8 @@ SMTP_PORT = 587
 EMAIL_USER = os.getenv("SENDER_EMAIL")
 EMAIL_PASS = os.getenv("SENDER_APP_PASSWORD")
 
-def generate_summary_email(winning_hotel_dict, confirmation_number, audio_url, candidates_list):
+# Added reservation_date as a required parameter
+def generate_summary_email(winning_hotel_dict, confirmation_number, audio_url, candidates_list, reservation_date):
     """Generates the HTML email body using the gathered data."""
     reviewed_list_html = ""
     
@@ -35,7 +36,6 @@ def generate_summary_email(winning_hotel_dict, confirmation_number, audio_url, c
             .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }}
             .header {{ background-color: #28a745; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }}
             .details {{ background-color: #f8f9fa; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }}
-            .audio-link {{ display: inline-block; padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; }}
             .team-section {{ background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 30px; font-size: 14px; }}
             .footer {{ font-size: 12px; color: #777; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px; text-align: center; }}
         </style>
@@ -46,18 +46,17 @@ def generate_summary_email(winning_hotel_dict, confirmation_number, audio_url, c
                 <h2>✅ AI Booking Confirmed</h2>
             </div>
             
-            <p>Your AI Agent has successfully negotiated and secured the lowest available hotel rate.</p>
+            <p>Your AI Agent has successfully negotiated and secured the following reservation:</p>
             
             <div class="details">
-                <h3>Winning Reservation: {winning_hotel_dict.get('name')}</h3>
-                <p><strong>Address:</strong> {winning_hotel_dict.get('address')}</p>
-                <p><strong>Confirmed Price:</strong> ${winning_hotel_dict.get('total_price')}</p>
-                <p><strong>Confirmation Number:</strong> <span style="font-size: 18px; color: #d9534f;">{confirmation_number}</span></p>
+                <p><strong>Hotel Name:</strong> {winning_hotel_dict.get('name')}</p>
+                <p><strong>Hotel Address:</strong> {winning_hotel_dict.get('address')}</p>
+                <p><strong>Hotel Phone:</strong> {winning_hotel_dict.get('phone', 'N/A')}</p>
+                <p><strong>Reservation #:</strong> {confirmation_number}</p>
+                <p><strong>Reservation Date:</strong> {reservation_date}</p>
+                <p><strong>Price for the stay:</strong> ${winning_hotel_dict.get('total_price')}</p>
+                <p><strong>Link To Audio Recording of the conversation:</strong> <a href="{audio_url}">Listen here (from Elevenlabs)</a></p>
             </div>
-
-            <h3>Audio Proof of Negotiation</h3>
-            <p>Listen to the AI interacting with the hotel front desk:</p>
-            <a href="{audio_url}" class="audio-link">🎧 Play Call Recording</a>
 
             <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
 
@@ -67,7 +66,7 @@ def generate_summary_email(winning_hotel_dict, confirmation_number, audio_url, c
             </ul>
 
             <div class="team-section">
-                <h3 style="margin-top: 0; color: #0056b3;">Built by Team 14</h3>
+                <h3 style="margin-top: 0; color: #0056b3;">Team # 11 Members</h3>
                 <ul style="list-style-type: none; padding-left: 0; margin-bottom: 0;">
                     <li>📧 kevinsbryce@gmail.com</li>
                     <li>📧 andy.valencia.r@gmail.com</li>
@@ -94,7 +93,8 @@ def send_verification_email(html_body, recipient_email):
         return False
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "✅ AutoBooker AI: Final Reservation Secured - Team 14"
+    # Updated subject line to exactly match the required format
+    msg["Subject"] = "Team # 14 - Hotel Reservation Confirmed!"
     msg["From"] = EMAIL_USER
     msg["To"] = recipient_email
 
@@ -118,13 +118,12 @@ def send_verification_email(html_body, recipient_email):
 
 # ---- Test: only runs when you run THIS file directly ----
 if __name__ == "__main__":
-    # Pull the target email from your .env file
     target_inbox = os.getenv("HACKATHON_JUDGE_EMAIL")
     
     if not target_inbox:
         print("❌ Error: HACKATHON_JUDGE_EMAIL is not set in your .env file.")
     else:
-        # 1. Mock the data exactly as your search_hotel.py will output it
+        # Mock data representing the search results
         mock_candidates = [
             {
                 "name": "The Hackathon Grand Hotel",
@@ -136,13 +135,8 @@ if __name__ == "__main__":
                 "name": "Expensive Suites",
                 "address": "200 Bay Street, Toronto, ON",
                 "total_price": "350.00",
-                "reason_skipped": "Price exceeded $200 limit"
-            },
-            {
-                "name": "Busy Inn",
-                "address": "300 Queen Street, Toronto, ON",
-                "total_price": "120.00",
-                "reason_skipped": "Line was busy, AI could not connect"
+                "phone": "+1-555-0200",
+                "reason_skipped": "Price exceeded limit"
             }
         ]
 
@@ -150,15 +144,15 @@ if __name__ == "__main__":
         mock_winner = mock_candidates[0]
         mock_confirmation = "HACK-2026-XYZ"
         mock_audio_link = "https://api.11labs.io/v1/calls/123456/audio"
+        mock_dates = "October 20, 2026 - October 22, 2026"
 
-        # 2. Generate the HTML template
         print("Generating HTML template...")
         test_html_body = generate_summary_email(
             winning_hotel_dict=mock_winner,
             confirmation_number=mock_confirmation,
             audio_url=mock_audio_link,
-            candidates_list=mock_candidates
+            candidates_list=mock_candidates,
+            reservation_date=mock_dates # Passed the new date variable here
         )
 
-        # 3. Send the email
         send_verification_email(test_html_body, target_inbox)
